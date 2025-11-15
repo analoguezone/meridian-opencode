@@ -1,5 +1,10 @@
 ---
-model: claude-sonnet-4
+# model: <optional - defaults to OpenCode's configured model>
+# Uncomment and set to override, e.g.:
+# model: claude-sonnet-4
+# model: gpt-4o
+# model: gemini-2.5-flash
+
 temperature: 0.2
 tools:
   # Disabled - no code modifications allowed

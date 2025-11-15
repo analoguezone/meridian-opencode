@@ -22,6 +22,11 @@ Agents replace the deprecated `mode` concept in OpenCode.
 
 **Purpose:** Structured planning with tool restrictions to prevent premature implementation.
 
+**Model Configuration:**
+- **Default:** Uses OpenCode's configured default model
+- **Override:** Uncomment `model:` in the agent file to use a specific model
+- **Examples:** `claude-sonnet-4`, `gpt-4o`, `gemini-2.5-flash`, `o1`, etc.
+
 **Tool Configuration:**
 ```yaml
 # Enabled - Analysis only
@@ -105,7 +110,11 @@ You can create your own agents with custom Meridian behavior:
 
 ```markdown
 ---
-model: claude-sonnet-4
+# model: <optional - uses OpenCode default>
+# Uncomment to override with specific model:
+# model: claude-sonnet-4
+# model: gpt-4o
+
 temperature: 0.1
 tools:
   write: false
@@ -247,6 +256,33 @@ if (input.tool === "ExitPlanMode" && currentAgent === "meridian-plan") {
 **Check:** All agents should have memory-curator and task-manager tools.
 
 **Solution:** Verify `.opencode/plugin/tools.ts` is loaded correctly.
+
+## Configuring Models per Agent
+
+Each agent can use a different model. Edit the agent file frontmatter:
+
+```yaml
+---
+# Use fast model for planning
+model: gemini-2.5-flash
+temperature: 0.3
+
+# Or use reasoning model for complex analysis
+# model: o1
+# temperature: 0.2
+
+# Or use default OpenCode model (omit model field)
+---
+```
+
+**Available Models:**
+Any model configured in your OpenCode installation, such as:
+- `claude-sonnet-4`, `claude-opus-4`
+- `gpt-4o`, `gpt-4.1`, `o1`, `o3-mini`
+- `gemini-2.5`, `gemini-2.5-flash`
+- Custom OpenRouter/Azure endpoints
+
+**Pro Tip:** Use faster/cheaper models for planning agents, reserve expensive models for implementation.
 
 ## Advanced: Agent-Specific Prompts
 

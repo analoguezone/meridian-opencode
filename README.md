@@ -40,12 +40,12 @@ Meridian addresses critical challenges in AI-assisted development:
 
 1. **Copy the `.meridian` directory** to your project root:
    ```bash
-   cp -r opencode_version/.meridian /path/to/your/project/
+   cp -r .meridian /path/to/your/project/
    ```
 
 2. **Copy the `.opencode` directory** to your project root:
    ```bash
-   cp -r opencode_version/.opencode /path/to/your/project/
+   cp -r .opencode /path/to/your/project/
    ```
 
 3. **Install plugin dependencies**:
@@ -130,6 +130,7 @@ Meridian ships with a specialized **`meridian-plan`** agent for structured plann
 - ✅ Plan with TodoWrite
 - ❌ Cannot modify code (write, edit, bash disabled)
 - ✅ Prompts for task creation when exiting
+- 🎯 Uses OpenCode's default model (configurable in `.opencode/agent/meridian-plan.md`)
 
 **Workflow:**
 1. Switch to `meridian-plan` agent
@@ -138,6 +139,21 @@ Meridian ships with a specialized **`meridian-plan`** agent for structured plann
 4. Approve the plan
 5. Exit plan mode → Meridian prompts for task creation
 6. Switch back to `build` agent for implementation
+
+**Customizing the Agent:**
+Edit `.opencode/agent/meridian-plan.md` to override model, temperature, or tools:
+```yaml
+---
+# Uncomment to use specific model instead of default:
+# model: claude-sonnet-4
+# model: gpt-4o
+# model: gemini-2.5-flash
+
+temperature: 0.2  # Adjust between 0.0-1.0
+tools:
+  # Customize which tools are available
+---
+```
 
 ### Using Standard Plan/Build Agents
 
