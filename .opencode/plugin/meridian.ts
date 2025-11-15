@@ -233,6 +233,10 @@ After reviewing and synchronizing, also review all files referenced in \`${direc
         }
         idleMessageInjected = true;
 
+        // TEMPORARY: Disable session.idle hook to debug infinite loop
+        // TODO: Re-enable after fixing task-manager infinite loop issue
+        return;
+
         const sessionID = event.properties.sessionID;
 
         const stopMessage = `[SYSTEM]: Before stopping, check whether you need to update \`${directory}/.meridian/task-backlog.yaml\`, \`${directory}/.meridian/tasks/TASK-###/{TASK-###.yaml,TASK-###-plan.md,TASK-###-context.md}\` (for the current task), or \`${directory}/.meridian/memory.jsonl\` using the \`memory-curator\` skill, as well as any other documents that should reflect what you accomplished during this session. If nothing significant happened, you may skip the update. If you were working on a task, update the status, session progress and next steps in \`${directory}/.meridian/tasks/TASK-###/TASK-###.yaml\` with details such as: the current implementation step, key decisions made, issues discovered, complex problems solved, and any other important information from this session. Save information that would be difficult to rediscover in future sessions.
