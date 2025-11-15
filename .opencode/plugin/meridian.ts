@@ -4,14 +4,28 @@ import { join } from "path";
 
 /**
  * Meridian Plugin for OpenCode
- * 
+ *
  * Provides structured task management, memory curation, and context preservation
  * across sessions. Enforces coding standards and maintains project knowledge.
+ *
+ * Special Behavior in meridian-plan agent:
+ * - Enforces planning workflow restrictions
+ * - Prompts for task creation when exiting plan mode
+ * - Tool restrictions defined in .opencode/agent/meridian-plan.md
+ *
+ * Standard Behavior in all other agents (build/plan/custom):
+ * - Memory management active (memory-curator tool)
+ * - Task management active (task-manager tool)
+ * - Context preservation on session reload
+ * - Session idle/stop hooks for cleanup
  */
 export const MeridianPlugin: Plugin = async ({ project, client, $, directory, worktree }) => {
   const meridianDir = join(directory, ".meridian");
   const configPath = join(meridianDir, "config.yaml");
   const needsContextReviewFlag = join(meridianDir, ".needs-context-review");
+
+  // Track current agent/mode for conditional behavior
+  let currentAgent: string = "build";
 
   /**
    * Read and parse config.yaml to determine project type and TDD mode
@@ -99,8 +113,29 @@ export const MeridianPlugin: Plugin = async ({ project, client, $, directory, wo
 
   return {
     /**
+     * Track current agent/mode for conditional behavior
+     * This allows Meridian to adapt its behavior based on which agent is active
+     */
+    "chat.message": async (input, output) => {
+      if (input.agent) {
+        const previousAgent = currentAgent;
+        currentAgent = input.agent;
+
+        // Log agent switches (only when it changes)
+        if (previousAgent !== currentAgent) {
+          if (currentAgent === "meridian-plan") {
+            console.log("[Meridian] 🎯 Meridian Plan agent active - Planning mode with tool restrictions");
+          } else {
+            console.log(`[Meridian] Agent: ${currentAgent} - Full Meridian features active`);
+          }
+        }
+      }
+    },
+
+    /**
      * Session initialization hook
      * Loads project context, rules, and tasks into the session
+     * Active in ALL agents (build, plan, meridian-plan, custom)
      */
     event: async ({ event }) => {
       // Handle session start (startup or clear)
@@ -154,7 +189,7 @@ ${codeGuideFiles}
 
 Check \`${directory}/.meridian/task-backlog.yaml\` for any uncompleted tasks. For each uncompleted task, go to the corresponding folder at \`${directory}/.meridian/tasks/TASK-###/\` and read **all** files within that folder.
 
-**Synchronize your current work before proceeding**  
+**Synchronize your current work before proceeding**
 To avoid losing context due to compaction, first persist any changes you made just before the conversation was compacted:
 
 1. Identify the current task.
@@ -188,10 +223,14 @@ If you have nothing to update, your response to this hook must be exactly the sa
 
     /**
      * Pre-tool execution hook
-     * Blocks tool usage until context review is complete after session reload
+     *
+     * Behavior varies by agent:
+     * - ALL agents: Context review guard (blocks tools until context is reviewed)
+     * - meridian-plan agent ONLY: Enforces task creation workflow when exiting plan mode
+     * - Other agents: No special restrictions
      */
     "tool.execute.before": async (input, output) => {
-      // Check if context review is needed
+      // Check if context review is needed (applies to ALL agents)
       if (existsSync(needsContextReviewFlag)) {
         removeContextReviewFlag();
 
@@ -206,12 +245,25 @@ After you finish reviewing the required files, you may automatically resume your
         );
       }
 
-      // Plan mode exit reminder
-      if (input.tool === "ExitPlanMode") {
+      // Meridian Plan mode exit reminder (ONLY when in meridian-plan agent)
+      if (input.tool === "ExitPlanMode" && currentAgent === "meridian-plan") {
         throw new Error(
-          `[SYSTEM]: If the user has approved the plan, you must create a task in \`${directory}/.meridian/task-backlog.yaml\` and generate a task brief using the \`task-manager\` skill. Do not create a task if it is only a small change or a bug fix. Before creating any new task brief or adding an entry to task-backlog.yaml, you MUST use the \`task-manager\` skill.`
+          `[SYSTEM]: You are exiting Meridian Plan mode. If the user has approved the plan, you must create a formal task:
+
+1. Use the \`task-manager\` tool to scaffold the task folder
+2. Populate TASK-###.yaml with the task brief
+3. Copy your approved plan into TASK-###-plan.md
+4. Add initial context to TASK-###-context.md
+5. Update .meridian/task-backlog.yaml
+
+Do NOT create a task if this was only a small change, bug fix, or exploratory discussion. Only create tasks for non-trivial planned work that requires formal tracking.
+
+After creating the task (or if no task is needed), you may proceed to build mode for implementation.`
         );
       }
+
+      // For all other agents (build, plan, custom): No ExitPlanMode restrictions
+      // Memory, tasks, and context features remain fully active
     },
   };
 };

@@ -95,6 +95,8 @@ Meridian addresses critical challenges in AI-assisted development:
 └── docs/                          # Project-specific documentation
 
 .opencode/
+├── agent/
+│   └── meridian-plan.md         # Meridian Plan agent definition
 └── plugin/
     ├── package.json
     ├── tsconfig.json
@@ -112,16 +114,49 @@ When you start OpenCode in a project with Meridian:
 2. OpenCode reads all coding guides, memory, and tasks
 3. You're prompted to specify what you'd like to work on
 
+### Using the Meridian Plan Agent (Recommended)
+
+Meridian ships with a specialized **`meridian-plan`** agent for structured planning:
+
+**To switch to Meridian Plan agent:**
+```bash
+# In OpenCode, cycle through agents with Tab
+# Or select "meridian-plan" from the agent menu
+```
+
+**In `meridian-plan` agent:**
+- ✅ Read and analyze code (read, grep, glob, list)
+- ✅ Research documentation (webfetch, websearch)
+- ✅ Plan with TodoWrite
+- ❌ Cannot modify code (write, edit, bash disabled)
+- ✅ Prompts for task creation when exiting
+
+**Workflow:**
+1. Switch to `meridian-plan` agent
+2. Discuss requirements and analyze codebase
+3. OpenCode creates a detailed plan
+4. Approve the plan
+5. Exit plan mode → Meridian prompts for task creation
+6. Switch back to `build` agent for implementation
+
+### Using Standard Plan/Build Agents
+
+You can also use OpenCode's built-in `plan` and `build` agents:
+
+- **`plan` agent**: Planning mode with standard restrictions
+- **`build` agent**: Full implementation mode
+- **Any custom agent**: Full Meridian features (memory, tasks, context)
+
+**Note:** The task creation reminder only triggers when exiting `meridian-plan` agent. Other agents have full Meridian features without planning workflow enforcement.
+
 ### Creating Tasks
 
-After discussing a plan with OpenCode:
+Tasks are created using the `task-manager` tool:
 
-1. Switch to **Plan Mode** (Tab key in OpenCode)
-2. Discuss and refine the plan
-3. Get user approval
-4. Switch back to **Build Mode** (Tab key)
-5. OpenCode automatically creates a task using the `task-manager` tool
-6. Task files are scaffolded and the backlog is updated
+1. Plan your work (in `meridian-plan` or any agent)
+2. Get user approval for the plan
+3. Call `task-manager` tool (or let Meridian prompt you)
+4. Meridian scaffolds task files and updates backlog
 
 ### Adding Memory Entries
 
