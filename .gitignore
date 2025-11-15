@@ -1,0 +1,41 @@
+# Meridian for OpenCode - Git Ignore
+
+# Node modules
+.opencode/plugin/node_modules/
+.opencode/plugin/package-lock.json
+.opencode/plugin/yarn.lock
+.opencode/plugin/bun.lockb
+
+# TypeScript build artifacts
+.opencode/plugin/*.js
+.opencode/plugin/*.d.ts
+.opencode/plugin/*.js.map
+
+# Temporary files
+.meridian/.needs-context-review
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Keep these files (important!)
+!.meridian/memory.jsonl
+!.meridian/task-backlog.yaml
+!.meridian/config.yaml
+!.meridian/CODE_GUIDE.md
+!.meridian/CODE_GUIDE_ADDON_*.md
+!.meridian/prompts/agent-operating-manual.md
+!.meridian/tasks/TASK-000-template/
