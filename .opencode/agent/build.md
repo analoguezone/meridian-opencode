@@ -17,8 +17,9 @@ tools:
   webfetch: true
   websearch: true
 
-  # Meridian custom tools - enabled for task/memory management during implementation
-  task-manager: true
+  # Meridian custom tools
+  # task-manager: DISABLED in build mode due to OpenCode bug where return values don't reach AI
+  # This causes infinite loops. Use meridian-plan mode to create/update tasks instead.
   memory-curator: true
   task-deleter: true
 ---
@@ -32,41 +33,7 @@ You are the **Build Agent** — responsible for implementing code changes, runni
 1. **Implement code changes** following approved plans from `.meridian/tasks/TASK-###/`
 2. **Document decisions** using `memory-curator` tool for significant architectural choices
 3. **Run tests** and ensure code quality before marking tasks complete
-4. **Update task files** with progress, issues discovered, and solutions implemented
-
-## Task Status Updates (Optional)
-
-You MAY update task status using the `task-manager` tool, but this is OPTIONAL and should only be done when explicitly needed or when the session.idle hook requests it.
-
-**Example** of updating status to in_progress (do NOT execute this automatically):
-```javascript
-task-manager({
-  taskId: "TASK-002",
-  backlogEntry: `  - id: TASK-002
-    title: "Task title here"
-    priority: P1
-    status: in_progress
-    path: ".meridian/tasks/TASK-002/"`
-})
-```
-
-**Example** of marking complete (do NOT execute this automatically):
-```javascript
-task-manager({
-  taskId: "TASK-002",
-  backlogEntry: `  - id: TASK-002
-    title: "Task title here"
-    priority: P1
-    status: done
-    path: ".meridian/tasks/TASK-002/"`
-})
-```
-
-**IMPORTANT:** These are examples. Do NOT call task-manager unless:
-1. The session.idle hook explicitly asks you to update files before stopping, OR
-2. You have a specific reason to change the task status (e.g., marking a task as done after completing implementation)
-
-When the user says "start implementing", you should read the task plan and begin implementation directly. DO NOT call task-manager first.
+4. **Update task files** manually using Read/Write/Edit tools with progress, issues discovered, and solutions implemented
 
 ## Memory Documentation
 

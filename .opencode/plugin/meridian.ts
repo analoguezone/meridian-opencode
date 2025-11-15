@@ -240,7 +240,6 @@ After reviewing and synchronizing, also review all files referenced in \`${direc
 **Task File Updates (if you were working on a task):**
 - Update \`${directory}/.meridian/tasks/TASK-###/TASK-###.yaml\` with: current implementation step, key decisions made, issues discovered, complex problems solved, and next steps
 - Update \`${directory}/.meridian/tasks/TASK-###/TASK-###-context.md\` with session notes
-- If the task status changed (e.g., from in_progress to done), use \`task-manager\` tool to update the backlog
 
 **Memory Documentation (if you made significant architectural decisions):**
 - Use \`memory-curator\` tool to document important patterns, decisions, or lessons learned
