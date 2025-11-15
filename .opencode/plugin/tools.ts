@@ -315,6 +315,8 @@ Examples:
           backlogEntry: tool.schema.string().optional().describe("Brief summary for task-backlog.yaml"),
         },
         async execute(args, ctx) {
+          const timestamp = new Date().toISOString();
+
           // Determine if we're creating or updating
           const isUpdate = !!args.taskId;
           const taskId = isUpdate ? args.taskId! : getNextTaskId();
@@ -350,15 +352,20 @@ Examples:
 
             // Update backlog if entry provided (do this BEFORE the early return check)
             if (args.backlogEntry) {
-              updateBacklog(taskId, args.backlogEntry);
-              filesUpdated.push("backlog");
+              try {
+                updateBacklog(taskId, args.backlogEntry);
+                filesUpdated.push("backlog");
+              } catch (error) {
+                // Return error details in the response so we can see what's happening
+                return `❌ BACKLOG UPDATE FAILED for ${taskId}\nError: ${error instanceof Error ? error.message : String(error)}\nStack: ${error instanceof Error ? error.stack : 'N/A'}`;
+              }
             }
 
             if (filesUpdated.length === 0) {
               return `⚠️  Task ${taskId} not modified (no content provided).\nPath: ${destDir}`;
             }
 
-            return `✅ Task updated successfully: ${taskId}\nUpdated: ${filesUpdated.join(", ")}\nPath: ${destDir}`;
+            return `✅ Task updated successfully: ${taskId}\nUpdated: ${filesUpdated.join(", ")}\nPath: ${destDir}\nTimestamp: ${timestamp}\n\n[DEBUG] This message should stop the loop. If you see this repeated with different timestamps, the AI is not seeing the return value properly.`;
           } else {
             // CREATE MODE: Task must NOT exist
             if (!existsSync(templateDir)) {
