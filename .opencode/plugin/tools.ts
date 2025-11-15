@@ -348,14 +348,14 @@ Examples:
               filesUpdated.push("context");
             }
 
-            if (filesUpdated.length === 0) {
-              return `⚠️  Task ${taskId} not modified (no content provided).\nPath: ${destDir}`;
-            }
-
-            // Update backlog if entry provided
+            // Update backlog if entry provided (do this BEFORE the early return check)
             if (args.backlogEntry) {
               updateBacklog(taskId, args.backlogEntry);
               filesUpdated.push("backlog");
+            }
+
+            if (filesUpdated.length === 0) {
+              return `⚠️  Task ${taskId} not modified (no content provided).\nPath: ${destDir}`;
             }
 
             return `✅ Task updated successfully: ${taskId}\nUpdated: ${filesUpdated.join(", ")}\nPath: ${destDir}`;
