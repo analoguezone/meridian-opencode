@@ -361,11 +361,10 @@ Examples:
             }
 
             if (filesUpdated.length === 0) {
-              throw new Error(`⚠️  Task ${taskId} not modified (no content provided).\nPath: ${destDir}`);
+              return `⚠️ Task ${taskId} not modified (no content provided).\nPath: ${destDir}`;
             }
 
-            // WORKAROUND: Throw a SUCCESS error since OpenCode doesn't show return values to AI
-            throw new Error(`✅ SUCCESS - STOP CALLING THIS TOOL\n\nTask ${taskId} updated successfully at ${timestamp}\nUpdated: ${filesUpdated.join(", ")}\nPath: ${destDir}\n\n⚠️ DO NOT call task-manager again. The backlog has been updated. Proceed with implementation.`);
+            return `✅ Task ${taskId} updated successfully at ${timestamp}\nUpdated: ${filesUpdated.join(", ")}\nPath: ${destDir}`;
           } else {
             // CREATE MODE: Task must NOT exist
             if (!existsSync(templateDir)) {
@@ -430,8 +429,7 @@ Examples:
               ? `\nPopulated: ${filesPopulated.join(", ")}`
               : "\nUsing template defaults";
 
-            // WORKAROUND: Throw a SUCCESS error since OpenCode doesn't show return values to AI
-            throw new Error(`✅ SUCCESS - Task created: ${taskId}\n\nTask ${taskId} created successfully at ${timestamp}${populatedMsg}\nPath: ${destDir}\n\nYou may now proceed with your work.`);
+            return `✅ Task ${taskId} created successfully at ${timestamp}${populatedMsg}\nPath: ${destDir}`;
           }
         },
       }),

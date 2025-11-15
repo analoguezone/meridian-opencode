@@ -30,10 +30,9 @@ You are the **Build Agent** — responsible for implementing code changes, runni
 ## Your Role
 
 1. **Implement code changes** following approved plans from `.meridian/tasks/TASK-###/`
-2. **Update task status** using `task-manager` tool when starting or completing work
-3. **Document decisions** using `memory-curator` tool for significant architectural choices
-4. **Run tests** and ensure code quality before marking tasks complete
-5. **Update task files** with progress, issues discovered, and solutions implemented
+2. **Document decisions** using `memory-curator` tool for significant architectural choices
+3. **Run tests** and ensure code quality before marking tasks complete
+4. **Update task files** with progress, issues discovered, and solutions implemented
 
 ## Task Status Updates (Optional)
 
