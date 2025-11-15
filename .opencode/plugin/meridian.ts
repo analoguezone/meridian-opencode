@@ -27,6 +27,9 @@ export const MeridianPlugin: Plugin = async ({ project, client, $, directory, wo
   // Track current agent/mode for conditional behavior
   let currentAgent: string = "build";
 
+  // Prevent duplicate idle message injection
+  let idleMessageInjected = false;
+
   /**
    * Read and parse config.yaml to determine project type and TDD mode
    */
@@ -224,6 +227,12 @@ After reviewing and synchronizing, also review all files referenced in \`${direc
 
       // Handle session idle/stop
       if (event.type === "session.idle") {
+        // Guard against duplicate idle messages
+        if (idleMessageInjected) {
+          return;
+        }
+        idleMessageInjected = true;
+
         const sessionID = event.properties.sessionID;
 
         const stopMessage = `[SYSTEM]: Before stopping, check whether you need to update \`${directory}/.meridian/task-backlog.yaml\`, \`${directory}/.meridian/tasks/TASK-###/{TASK-###.yaml,TASK-###-plan.md,TASK-###-context.md}\` (for the current task), or \`${directory}/.meridian/memory.jsonl\` using the \`memory-curator\` skill, as well as any other documents that should reflect what you accomplished during this session. If nothing significant happened, you may skip the update. If you were working on a task, update the status, session progress and next steps in \`${directory}/.meridian/tasks/TASK-###/TASK-###.yaml\` with details such as: the current implementation step, key decisions made, issues discovered, complex problems solved, and any other important information from this session. Save information that would be difficult to rediscover in future sessions.
@@ -233,11 +242,12 @@ If you consider the current work "finished" or close to completion, you MUST ens
 If you have nothing to update, your response to this hook must be exactly the same as the message that was blocked. If you did update something, resend the same message you sent before you were interrupted by this hook. Before marking a task as complete, review the 'Definition of Done' section in \`${directory}/.meridian/prompts/agent-operating-manual.md\`.`;
 
         // Inject idle/stop reminder into session
+        // Note: noReply is FALSE here because we want Claude to respond and take action
         try {
           await client.session.prompt({
             path: { id: sessionID },
             body: {
-              noReply: true,
+              noReply: false, // Claude should respond and update tasks/memory
               parts: [{ type: "text", text: stopMessage }],
             },
           });
