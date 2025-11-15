@@ -317,8 +317,15 @@ Examples:
         async execute(args, ctx) {
           const timestamp = new Date().toISOString();
 
-          // EMERGENCY DEBUG: Return immediately without doing anything
-          return `🚨 EMERGENCY DEBUG ${timestamp}\nTool was called with taskId: ${args.taskId}\nIf you see this message, tool returns are working.\nIf you don't see this message, OpenCode has a bug where custom tool return values aren't shown to the AI.`;
+          // WORKAROUND: Since OpenCode doesn't show return values to the AI,
+          // write the result to a file AND throw an error (errors should be visible)
+          const resultPath = join(meridianDir, ".last-task-manager-result.txt");
+          const debugMessage = `TOOL EXECUTED at ${timestamp}\nTaskID: ${args.taskId}\n\nThis file proves task-manager IS running.\nOpenCode Bug: Return values are not shown to the AI.`;
+
+          writeFileSync(resultPath, debugMessage, "utf-8");
+
+          // Throw error instead of returning - errors should be visible to the AI
+          throw new Error(`🚨 INTENTIONAL ERROR for debugging:\n\nTask-manager tool WAS executed at ${timestamp} for taskId ${args.taskId}.\nResult written to: ${resultPath}\n\nPlease read that file to confirm the tool ran.\n\nThis error proves OpenCode is NOT showing custom tool return values to the AI, causing infinite loops.`);
 
           // Determine if we're creating or updating
           const isUpdate = !!args.taskId;
