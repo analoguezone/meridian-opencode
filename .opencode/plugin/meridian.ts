@@ -147,13 +147,12 @@ export const MeridianPlugin: Plugin = async ({ project, client, $, directory, wo
      * Loads project context, rules, and tasks into the session
      * Active in ALL agents (build, plan, meridian-plan, custom)
      *
-     * NOTE: The current OpenCode plugin API doesn't support injecting messages from event hooks.
-     * Message injection is logged but not injected into the session.
-     * See: https://github.com/sst/opencode/issues/3378
+     * Uses client.session.prompt() with noReply: true to inject messages without triggering AI response
      */
     event: async ({ event }) => {
-      // Handle session created (equivalent to session start)
+      // Handle session created (startup)
       if (event.type === "session.created") {
+        const sessionID = event.properties.info.id;
         const { projectType, tddMode } = getProjectConfig();
         const codeGuideFiles = buildCodeGuideFilesList();
 
@@ -184,13 +183,24 @@ Claude must always complete all steps listed in this system message before doing
         // Create context review flag
         createContextReviewFlag();
 
-        // Log initialization (message injection not supported in current API)
-        console.log("[Meridian] Project environment loaded. Core rules, guides, tasks, and memory are now active.");
-        console.log("[Meridian] TODO: Inject initialization message when API supports it");
+        // Inject initialization message into session
+        try {
+          await client.session.prompt({
+            path: { id: sessionID },
+            body: {
+              noReply: true,
+              parts: [{ type: "text", text: initMessage }],
+            },
+          });
+          console.log("[Meridian] ✅ Initialization message injected into session");
+        } catch (error) {
+          console.error("[Meridian] ❌ Failed to inject initialization message:", error);
+        }
       }
 
-      // Handle session compacted
+      // Handle session compacted (context reload)
       if (event.type === "session.compacted") {
+        const sessionID = event.properties.sessionID;
         const codeGuideFiles = buildCodeGuideFilesList();
 
         const reloadMessage = `This conversation was recently compacted. There are important files and documentation that must always remain in your context. Please read them before continuing your work. These files are:
@@ -218,20 +228,44 @@ After reviewing and synchronizing, also review all files referenced in \`${direc
         // Create context review flag
         createContextReviewFlag();
 
-        console.log("[Meridian] Session compacted. Key project files should be reloaded.");
-        console.log("[Meridian] TODO: Inject reload message when API supports it");
+        // Inject reload message into session
+        try {
+          await client.session.prompt({
+            path: { id: sessionID },
+            body: {
+              noReply: true,
+              parts: [{ type: "text", text: reloadMessage }],
+            },
+          });
+          console.log("[Meridian] ✅ Context reload message injected into session");
+        } catch (error) {
+          console.error("[Meridian] ❌ Failed to inject reload message:", error);
+        }
       }
 
       // Handle session idle/stop
       if (event.type === "session.idle") {
+        const sessionID = event.properties.sessionID;
+
         const stopMessage = `[SYSTEM]: Before stopping, check whether you need to update \`${directory}/.meridian/task-backlog.yaml\`, \`${directory}/.meridian/tasks/TASK-###/{TASK-###.yaml,TASK-###-plan.md,TASK-###-context.md}\` (for the current task), or \`${directory}/.meridian/memory.jsonl\` using the \`memory-curator\` skill, as well as any other documents that should reflect what you accomplished during this session. If nothing significant happened, you may skip the update. If you were working on a task, update the status, session progress and next steps in \`${directory}/.meridian/tasks/TASK-###/TASK-###.yaml\` with details such as: the current implementation step, key decisions made, issues discovered, complex problems solved, and any other important information from this session. Save information that would be difficult to rediscover in future sessions.
 
 If you consider the current work "finished" or close to completion, you MUST ensure the codebase is clean before stopping: run the project's tests, lint, and build commands. If any of these fail, you must fix the issues and rerun them until they pass before stopping. If they already passed recently and no further changes were made, you may state that they are already clean and stop.
 
 If you have nothing to update, your response to this hook must be exactly the same as the message that was blocked. If you did update something, resend the same message you sent before you were interrupted by this hook. Before marking a task as complete, review the 'Definition of Done' section in \`${directory}/.meridian/prompts/agent-operating-manual.md\`.`;
 
-        console.log("[Meridian] Before stopping, Claude should update task files, backlog, and memory.");
-        console.log("[Meridian] TODO: Inject idle message when API supports it");
+        // Inject idle/stop reminder into session
+        try {
+          await client.session.prompt({
+            path: { id: sessionID },
+            body: {
+              noReply: true,
+              parts: [{ type: "text", text: stopMessage }],
+            },
+          });
+          console.log("[Meridian] ✅ Session idle reminder injected");
+        } catch (error) {
+          console.error("[Meridian] ❌ Failed to inject idle reminder:", error);
+        }
       }
     },
 
