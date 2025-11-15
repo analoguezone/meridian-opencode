@@ -136,10 +136,14 @@ export const MeridianPlugin: Plugin = async ({ project, client, $, directory, wo
      * Session initialization hook
      * Loads project context, rules, and tasks into the session
      * Active in ALL agents (build, plan, meridian-plan, custom)
+     *
+     * NOTE: The current OpenCode plugin API doesn't support injecting messages from event hooks.
+     * Message injection is logged but not injected into the session.
+     * See: https://github.com/sst/opencode/issues/3378
      */
     event: async ({ event }) => {
-      // Handle session start (startup or clear)
-      if (event.type === "session.start") {
+      // Handle session created (equivalent to session start)
+      if (event.type === "session.created") {
         const { projectType, tddMode } = getProjectConfig();
         const codeGuideFiles = buildCodeGuideFilesList();
 
@@ -170,13 +174,13 @@ Claude must always complete all steps listed in this system message before doing
         // Create context review flag
         createContextReviewFlag();
 
-        // Return the initialization context
+        // Log initialization (message injection not supported in current API)
         console.log("[Meridian] Project environment loaded. Core rules, guides, tasks, and memory are now active.");
-        return initMessage;
+        console.log("[Meridian] TODO: Inject initialization message when API supports it");
       }
 
-      // Handle session resume/compact
-      if (event.type === "session.resume" || event.type === "session.compact") {
+      // Handle session compacted
+      if (event.type === "session.compacted") {
         const codeGuideFiles = buildCodeGuideFilesList();
 
         const reloadMessage = `This conversation was recently compacted. There are important files and documentation that must always remain in your context. Please read them before continuing your work. These files are:
@@ -204,8 +208,8 @@ After reviewing and synchronizing, also review all files referenced in \`${direc
         // Create context review flag
         createContextReviewFlag();
 
-        console.log("[Meridian] Session restored. Key project files were reloaded.");
-        return reloadMessage;
+        console.log("[Meridian] Session compacted. Key project files should be reloaded.");
+        console.log("[Meridian] TODO: Inject reload message when API supports it");
       }
 
       // Handle session idle/stop
@@ -216,8 +220,8 @@ If you consider the current work "finished" or close to completion, you MUST ens
 
 If you have nothing to update, your response to this hook must be exactly the same as the message that was blocked. If you did update something, resend the same message you sent before you were interrupted by this hook. Before marking a task as complete, review the 'Definition of Done' section in \`${directory}/.meridian/prompts/agent-operating-manual.md\`.`;
 
-        console.log("[Meridian] Before stopping, Claude is updating task files, backlog, and memory.");
-        return stopMessage;
+        console.log("[Meridian] Before stopping, Claude should update task files, backlog, and memory.");
+        console.log("[Meridian] TODO: Inject idle message when API supports it");
       }
     },
 
