@@ -21,6 +21,10 @@ tools:
   todowrite: true
   webfetch: true
   websearch: true
+
+  # Meridian custom tools - enabled for task/memory management
+  task-manager: true
+  memory-curator: true
 ---
 
 # Meridian Plan Agent
@@ -59,12 +63,15 @@ You are in **Meridian Plan Mode** — a specialized planning agent designed for 
 
 ✅ **Planning Tools:**
 - `todowrite` - Structure your plan into trackable steps
-- All Meridian custom tools are available for querying
+
+✅ **Meridian Custom Tools:**
+- `task-manager` - Create task folders and files (bypasses write restrictions)
+- `memory-curator` - Add entries to memory.jsonl (bypasses write restrictions)
 
 ❌ **Restricted (No Modifications):**
-- No `write`, `edit`, `patch` - Cannot modify code
+- No `write`, `edit`, `patch` - Cannot modify code files
 - No `bash` - Cannot execute commands
-- Memory and task creation will happen AFTER plan approval
+- Custom tools use Node.js fs directly, so they work despite global restrictions
 
 ## Workflow
 
