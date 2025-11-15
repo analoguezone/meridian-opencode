@@ -1,6 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin";
 import { tool } from "@opencode-ai/plugin";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, renameSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "fs";
 import { join, basename } from "path";
 import { execSync } from "child_process";
 
@@ -98,6 +98,73 @@ export const MeridianToolsPlugin: Plugin = async ({ project, client, $, director
     }
 
     return result;
+  }
+
+  /**
+   * Update or add task entry in backlog
+   */
+  function updateBacklog(taskId: string, entry: string): void {
+    if (!existsSync(backlogPath)) {
+      // Create initial backlog if missing
+      writeFileSync(backlogPath, `tasks:\n${entry}\n`, "utf-8");
+      return;
+    }
+
+    const backlogContent = readFileSync(backlogPath, "utf-8");
+    const lines = backlogContent.split("\n");
+
+    // Find if task already exists
+    const taskIdPattern = new RegExp(`^\\s*-\\s*id:\\s*${taskId}\\s*$`, 'm');
+    const match = backlogContent.match(taskIdPattern);
+
+    if (match) {
+      // Replace existing entry
+      // Find the start and end of this task entry
+      const startIdx = lines.findIndex(line => line.match(new RegExp(`^\\s*-\\s*id:\\s*${taskId}\\s*$`)));
+      if (startIdx === -1) return;
+
+      // Find next task or end of file
+      let endIdx = startIdx + 1;
+      while (endIdx < lines.length && !lines[endIdx].match(/^\s*-\s*id:/)) {
+        endIdx++;
+      }
+
+      // Replace the entry
+      const before = lines.slice(0, startIdx).join("\n");
+      const after = lines.slice(endIdx).join("\n");
+      const newContent = before + (before ? "\n" : "") + entry + (after ? "\n" + after : "");
+      writeFileSync(backlogPath, newContent, "utf-8");
+    } else {
+      // Append new entry
+      const content = backlogContent.trim();
+      writeFileSync(backlogPath, content + "\n" + entry + "\n", "utf-8");
+    }
+  }
+
+  /**
+   * Remove task entry from backlog
+   */
+  function removeFromBacklog(taskId: string): void {
+    if (!existsSync(backlogPath)) return;
+
+    const backlogContent = readFileSync(backlogPath, "utf-8");
+    const lines = backlogContent.split("\n");
+
+    // Find the task entry
+    const startIdx = lines.findIndex(line => line.match(new RegExp(`^\\s*-\\s*id:\\s*${taskId}\\s*$`)));
+    if (startIdx === -1) return;
+
+    // Find next task or end of file
+    let endIdx = startIdx + 1;
+    while (endIdx < lines.length && !lines[endIdx].match(/^\s*-\s*id:/)) {
+      endIdx++;
+    }
+
+    // Remove the entry
+    const before = lines.slice(0, startIdx).join("\n");
+    const after = lines.slice(endIdx).join("\n");
+    const newContent = (before + (after ? "\n" + after : "")).trim();
+    writeFileSync(backlogPath, newContent + "\n", "utf-8");
   }
 
   /**
@@ -285,6 +352,12 @@ Examples:
               return `⚠️  Task ${taskId} not modified (no content provided).\nPath: ${destDir}`;
             }
 
+            // Update backlog if entry provided
+            if (args.backlogEntry) {
+              updateBacklog(taskId, args.backlogEntry);
+              filesUpdated.push("backlog");
+            }
+
             return `✅ Task updated successfully: ${taskId}\nUpdated: ${filesUpdated.join(", ")}\nPath: ${destDir}`;
           } else {
             // CREATE MODE: Task must NOT exist
@@ -340,12 +413,58 @@ Examples:
             if (args.planContent) filesPopulated.push("plan");
             if (args.contextContent) filesPopulated.push("context");
 
+            // Add to backlog if entry provided
+            if (args.backlogEntry) {
+              updateBacklog(taskId, args.backlogEntry);
+              filesPopulated.push("backlog");
+            }
+
             const populatedMsg = filesPopulated.length > 0
               ? `\nPopulated: ${filesPopulated.join(", ")}`
               : "\nUsing template defaults";
 
             return `✅ Task created successfully: ${taskId}${populatedMsg}\nPath: ${destDir}`;
           }
+        },
+      }),
+
+      /**
+       * Task Deleter Tool
+       * Deletes tasks and removes them from backlog
+       */
+      "task-deleter": tool({
+        description: `Delete a task folder and remove it from the backlog.
+
+Use this to clean up:
+- Accidentally created tasks (like TASK-003 created by mistake)
+- Abandoned or obsolete tasks
+- Duplicate tasks
+
+WARNING: This permanently deletes the task folder and all its contents!
+
+Parameters:
+- taskId: Task ID to delete (e.g., "TASK-003")
+
+Example:
+- task-deleter({ taskId: "TASK-003" })`,
+        args: {
+          taskId: tool.schema.string().describe("Task ID to delete (e.g., 'TASK-003')"),
+        },
+        async execute(args, ctx) {
+          const taskId = args.taskId;
+          const destDir = join(tasksDir, taskId);
+
+          if (!existsSync(destDir)) {
+            throw new Error(`Task '${taskId}' not found at '${destDir}'. Cannot delete non-existent task.`);
+          }
+
+          // Remove from backlog first
+          removeFromBacklog(taskId);
+
+          // Delete the task folder
+          rmSync(destDir, { recursive: true, force: true });
+
+          return `✅ Task deleted successfully: ${taskId}\nRemoved from: ${destDir}\nRemoved from backlog`;
         },
       }),
     },

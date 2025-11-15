@@ -25,6 +25,7 @@ tools:
   # Meridian custom tools - enabled for task/memory management
   task-manager: true
   memory-curator: true
+  task-deleter: true
 ---
 
 # Meridian Plan Agent
