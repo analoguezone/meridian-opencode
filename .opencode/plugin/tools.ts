@@ -14,6 +14,12 @@ export const MeridianToolsPlugin: Plugin = async ({ project, client, $, director
   const tasksDir = join(meridianDir, "tasks");
   const backlogPath = join(meridianDir, "task-backlog.yaml");
 
+  // Plugin initialization logging
+  console.log("🛠️  Meridian Tools Plugin Loading");
+  console.log(`   Memory: ${memoryPath}`);
+  console.log(`   Tasks: ${tasksDir}`);
+  console.log(`   Backlog: ${backlogPath}`);
+
   /**
    * Read the last non-empty line from a file efficiently
    */
