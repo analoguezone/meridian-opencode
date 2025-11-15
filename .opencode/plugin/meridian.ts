@@ -235,11 +235,24 @@ After reviewing and synchronizing, also review all files referenced in \`${direc
 
         const sessionID = event.properties.sessionID;
 
-        const stopMessage = `[SYSTEM]: Before stopping, check whether you need to update \`${directory}/.meridian/task-backlog.yaml\`, \`${directory}/.meridian/tasks/TASK-###/{TASK-###.yaml,TASK-###-plan.md,TASK-###-context.md}\` (for the current task), or \`${directory}/.meridian/memory.jsonl\` using the \`memory-curator\` skill, as well as any other documents that should reflect what you accomplished during this session. If nothing significant happened, you may skip the update. If you were working on a task, update the status, session progress and next steps in \`${directory}/.meridian/tasks/TASK-###/TASK-###.yaml\` with details such as: the current implementation step, key decisions made, issues discovered, complex problems solved, and any other important information from this session. Save information that would be difficult to rediscover in future sessions.
+        const stopMessage = `[SYSTEM]: Before stopping, check whether you need to update task files or memory based on what you accomplished during this session:
 
-If you consider the current work "finished" or close to completion, you MUST ensure the codebase is clean before stopping: run the project's tests, lint, and build commands. If any of these fail, you must fix the issues and rerun them until they pass before stopping. If they already passed recently and no further changes were made, you may state that they are already clean and stop.
+**Task File Updates (if you were working on a task):**
+- Update \`${directory}/.meridian/tasks/TASK-###/TASK-###.yaml\` with: current implementation step, key decisions made, issues discovered, complex problems solved, and next steps
+- Update \`${directory}/.meridian/tasks/TASK-###/TASK-###-context.md\` with session notes
+- If the task status changed (e.g., from in_progress to done), use \`task-manager\` tool to update the backlog
 
-If you have nothing to update, your response to this hook must be exactly the same as the message that was blocked. If you did update something, resend the same message you sent before you were interrupted by this hook. Before marking a task as complete, review the 'Definition of Done' section in \`${directory}/.meridian/prompts/agent-operating-manual.md\`.`;
+**Memory Documentation (if you made significant architectural decisions):**
+- Use \`memory-curator\` tool to document important patterns, decisions, or lessons learned
+
+**Code Quality (if you consider the work finished):**
+- Run the project's tests, lint, and build commands
+- Fix any failures before marking the task as complete
+- Review 'Definition of Done' in \`${directory}/.meridian/prompts/agent-operating-manual.md\`
+
+**If nothing significant happened:** Skip the updates and respond with the same message that was blocked.
+
+**If you did update something:** Resend the same message you sent before this hook interrupted you.`;
 
         // Inject idle/stop reminder into session
         // Note: noReply is FALSE here because we want Claude to respond and take action
