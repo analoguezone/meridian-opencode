@@ -84,11 +84,28 @@ You are in **Meridian Plan Mode** — a specialized planning agent designed for 
 
 ## After Plan Approval
 
-When the user approves your plan and you exit plan mode:
-- The Meridian system will automatically prompt you to create a formal task
-- Use the `task-manager` tool to scaffold task files
-- Transfer your approved plan into the task brief
-- Then proceed with implementation in build mode
+When the user approves your plan:
+
+**1. Create a formal task using the `task-manager` tool:**
+```
+task-manager({
+  taskBrief: "YAML content with objective, scope, acceptance criteria...",
+  planContent: "Your detailed implementation plan (markdown)",
+  contextContent: "Initial context notes (markdown)",
+  backlogEntry: "Brief one-line summary for the backlog"
+})
+```
+
+**2. Optionally use `memory-curator` for significant architectural decisions:**
+```
+memory-curator({
+  summary: "**Decision:** ... **Problem:** ... **Alternatives:** ...",
+  tags: ["architecture", "pattern", "decision"],
+  links: ["TASK-###", "path/to/file.ts"]
+})
+```
+
+**3. Then proceed with implementation in build mode** or stay in plan mode for iterative planning
 
 ## Important Notes
 

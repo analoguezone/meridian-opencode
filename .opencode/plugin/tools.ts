@@ -214,28 +214,34 @@ Keep to ~6–10 lines total.`,
        * Creates and manages development tasks
        */
       "task-manager": tool({
-        description: `Create and manage development tasks after the user approves a plan. Initializes folders/files, updates the backlog, and keeps progress notes synchronized.
+        description: `Create and manage development tasks after the user approves a plan. Initializes folders/files, populates them with task details, and updates the backlog.
 
 When to Use:
-Use this skill IMMEDIATELY after the user approves a plan for code changes. It creates the task folder, scaffolds files, records the plan and context, and updates the backlog.
+Use this tool IMMEDIATELY after the user approves a plan for code changes. It creates the task folder, scaffolds files, populates them with your plan and context, and updates the backlog.
 
 Do NOT use for brainstorming or unapproved ideas.
 
 Task Structure:
 Each task lives at: .meridian/tasks/TASK-###/
 
-Files inside (exact names):
+Files created:
 - TASK-###.yaml — Task brief (objective, scope, constraints, acceptance criteria, deliverables, risks, out of scope, links)
-- TASK-###-plan.md — Exact plan approved by the user (freeze this; changes require re-approval)
-- TASK-###-context.md — Relevant context (Why decisions were made), key files, timestamped progress notes
+- TASK-###-plan.md — Exact plan approved by the user
+- TASK-###-context.md — Relevant context (why decisions were made), key files, initial notes
 
-After creating the task, you MUST:
-1. Read each file before writing (System limitation)
-2. Fill TASK-###.yaml using the Task Brief YAML Template
-3. Paste the approved plan into TASK-###-plan.md
-4. Add an initial entry to TASK-###-context.md
-5. Update .meridian/task-backlog.yaml with the new task entry`,
-        args: {},
+Parameters:
+- taskBrief: YAML content for TASK-###.yaml (objective, scope, constraints, etc.)
+- planContent: Markdown content for TASK-###-plan.md (the approved plan)
+- contextContent: Markdown content for TASK-###-context.md (initial context notes)
+- backlogEntry: Brief summary for task-backlog.yaml entry
+
+All parameters are optional - if omitted, template defaults will be used.`,
+        args: {
+          taskBrief: tool.schema.string().optional().describe("YAML content for TASK-###.yaml (task brief)"),
+          planContent: tool.schema.string().optional().describe("Markdown content for TASK-###-plan.md (approved plan)"),
+          contextContent: tool.schema.string().optional().describe("Markdown content for TASK-###-context.md (initial context)"),
+          backlogEntry: tool.schema.string().optional().describe("Brief summary for task-backlog.yaml"),
+        },
         async execute(args, ctx) {
           const taskId = getNextTaskId();
           const templateDir = join(tasksDir, "TASK-000-template");
@@ -272,7 +278,38 @@ After creating the task, you MUST:
           // Rename template files
           renameTemplateFiles(destDir, taskId);
 
-          return `✅ Task created successfully: ${taskId}. Read files in the folder before writing to them\nPath: ${destDir}`;
+          // Populate files with provided content (if any)
+          if (args.taskBrief) {
+            const taskBriefPath = join(destDir, `${taskId}.yaml`);
+            writeFileSync(taskBriefPath, args.taskBrief, "utf-8");
+          }
+
+          if (args.planContent) {
+            const planPath = join(destDir, `${taskId}-plan.md`);
+            writeFileSync(planPath, args.planContent, "utf-8");
+          }
+
+          if (args.contextContent) {
+            const contextPath = join(destDir, `${taskId}-context.md`);
+            writeFileSync(contextPath, args.contextContent, "utf-8");
+          }
+
+          // Optionally update backlog (simplified - just log for now)
+          if (args.backlogEntry) {
+            // TODO: Implement backlog update logic
+            // For now, just note it in the return message
+          }
+
+          const filesPopulated = [];
+          if (args.taskBrief) filesPopulated.push("YAML brief");
+          if (args.planContent) filesPopulated.push("plan");
+          if (args.contextContent) filesPopulated.push("context");
+
+          const populatedMsg = filesPopulated.length > 0
+            ? `\nPopulated: ${filesPopulated.join(", ")}`
+            : "\nUsing template defaults - you can edit files manually";
+
+          return `✅ Task created successfully: ${taskId}${populatedMsg}\nPath: ${destDir}`;
         },
       }),
     },

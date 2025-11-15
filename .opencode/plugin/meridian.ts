@@ -284,13 +284,14 @@ After you finish reviewing the required files, you may automatically resume your
       // Meridian Plan mode exit reminder (ONLY when in meridian-plan agent)
       if (input.tool === "ExitPlanMode" && currentAgent === "meridian-plan") {
         throw new Error(
-          `[SYSTEM]: You are exiting Meridian Plan mode. If the user has approved the plan, you must create a formal task:
+          `[SYSTEM]: You are exiting Meridian Plan mode. If the user has approved the plan, you should create a formal task using the \`task-manager\` tool:
 
-1. Use the \`task-manager\` tool to scaffold the task folder
-2. Populate TASK-###.yaml with the task brief
-3. Copy your approved plan into TASK-###-plan.md
-4. Add initial context to TASK-###-context.md
-5. Update .meridian/task-backlog.yaml
+task-manager({
+  taskBrief: "YAML content with objective, scope, acceptance criteria, deliverables, etc.",
+  planContent: "Your detailed implementation plan (markdown)",
+  contextContent: "Initial context notes explaining key decisions (markdown)",
+  backlogEntry: "Brief one-line summary for the backlog"
+})
 
 Do NOT create a task if this was only a small change, bug fix, or exploratory discussion. Only create tasks for non-trivial planned work that requires formal tracking.
 
