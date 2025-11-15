@@ -317,6 +317,9 @@ Examples:
         async execute(args, ctx) {
           const timestamp = new Date().toISOString();
 
+          // EMERGENCY DEBUG: Return immediately without doing anything
+          return `🚨 EMERGENCY DEBUG ${timestamp}\nTool was called with taskId: ${args.taskId}\nIf you see this message, tool returns are working.\nIf you don't see this message, OpenCode has a bug where custom tool return values aren't shown to the AI.`;
+
           // Determine if we're creating or updating
           const isUpdate = !!args.taskId;
           const taskId = isUpdate ? args.taskId! : getNextTaskId();
