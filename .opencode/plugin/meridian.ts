@@ -24,16 +24,6 @@ export const MeridianPlugin: Plugin = async ({ project, client, $, directory, wo
   const configPath = join(meridianDir, "config.yaml");
   const needsContextReviewFlag = join(meridianDir, ".needs-context-review");
 
-  // Plugin initialization logging
-  console.log("=".repeat(60));
-  console.log("🚀 Meridian Plugin Loading");
-  console.log("=".repeat(60));
-  console.log(`📁 Project ID: ${project.id}`);
-  console.log(`📂 Directory: ${directory}`);
-  console.log(`🌿 Worktree: ${worktree}`);
-  console.log(`⚙️  Config: ${configPath}`);
-  console.log("=".repeat(60));
-
   // Track current agent/mode for conditional behavior
   let currentAgent: string = "build";
 
@@ -130,15 +120,6 @@ export const MeridianPlugin: Plugin = async ({ project, client, $, directory, wo
       if (input.agent) {
         const previousAgent = currentAgent;
         currentAgent = input.agent;
-
-        // Log agent switches (only when it changes)
-        if (previousAgent !== currentAgent) {
-          if (currentAgent === "meridian-plan") {
-            console.log("[Meridian] 🎯 Meridian Plan agent active - Planning mode with tool restrictions");
-          } else {
-            console.log(`[Meridian] Agent: ${currentAgent} - Full Meridian features active`);
-          }
-        }
       }
     },
 
@@ -192,9 +173,8 @@ Claude must always complete all steps listed in this system message before doing
               parts: [{ type: "text", text: initMessage }],
             },
           });
-          console.log("[Meridian] ✅ Initialization message injected into session");
         } catch (error) {
-          console.error("[Meridian] ❌ Failed to inject initialization message:", error);
+          // Silently fail - message injection is optional
         }
       }
 
@@ -237,9 +217,8 @@ After reviewing and synchronizing, also review all files referenced in \`${direc
               parts: [{ type: "text", text: reloadMessage }],
             },
           });
-          console.log("[Meridian] ✅ Context reload message injected into session");
         } catch (error) {
-          console.error("[Meridian] ❌ Failed to inject reload message:", error);
+          // Silently fail - message injection is optional
         }
       }
 
@@ -262,9 +241,8 @@ If you have nothing to update, your response to this hook must be exactly the sa
               parts: [{ type: "text", text: stopMessage }],
             },
           });
-          console.log("[Meridian] ✅ Session idle reminder injected");
         } catch (error) {
-          console.error("[Meridian] ❌ Failed to inject idle reminder:", error);
+          // Silently fail - message injection is optional
         }
       }
     },
