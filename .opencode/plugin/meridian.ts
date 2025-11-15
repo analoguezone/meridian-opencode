@@ -24,6 +24,16 @@ export const MeridianPlugin: Plugin = async ({ project, client, $, directory, wo
   const configPath = join(meridianDir, "config.yaml");
   const needsContextReviewFlag = join(meridianDir, ".needs-context-review");
 
+  // Plugin initialization logging
+  console.log("=".repeat(60));
+  console.log("🚀 Meridian Plugin Loading");
+  console.log("=".repeat(60));
+  console.log(`📁 Project ID: ${project.id}`);
+  console.log(`📂 Directory: ${directory}`);
+  console.log(`🌿 Worktree: ${worktree}`);
+  console.log(`⚙️  Config: ${configPath}`);
+  console.log("=".repeat(60));
+
   // Track current agent/mode for conditional behavior
   let currentAgent: string = "build";
 
