@@ -6,6 +6,7 @@
     "@opencode-ai/plugin": "latest"
   },
   "devDependencies": {
+    "@types/minimatch": "^5.1.2",
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"
   }
