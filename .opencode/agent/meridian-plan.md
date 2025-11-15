@@ -86,13 +86,25 @@ You are in **Meridian Plan Mode** — a specialized planning agent designed for 
 
 When the user approves your plan:
 
-**1. Create a formal task using the `task-manager` tool:**
+**1. Create OR update a task using the `task-manager` tool:**
+
+**Create new task:**
 ```
 task-manager({
   taskBrief: "YAML content with objective, scope, acceptance criteria...",
   planContent: "Your detailed implementation plan (markdown)",
   contextContent: "Initial context notes (markdown)",
   backlogEntry: "Brief one-line summary for the backlog"
+})
+```
+
+**Update existing task:**
+```
+task-manager({
+  taskId: "TASK-002",  // Specify which task to update
+  taskBrief: "Updated YAML content...",
+  planContent: "Updated implementation plan (markdown)",
+  contextContent: "Additional context notes (markdown)"
 })
 ```
 

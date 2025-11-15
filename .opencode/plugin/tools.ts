@@ -214,102 +214,138 @@ Keep to ~6–10 lines total.`,
        * Creates and manages development tasks
        */
       "task-manager": tool({
-        description: `Create and manage development tasks after the user approves a plan. Initializes folders/files, populates them with task details, and updates the backlog.
+        description: `Create OR update development tasks after the user approves a plan. Initializes folders/files, populates them with task details, and updates the backlog.
 
 When to Use:
-Use this tool IMMEDIATELY after the user approves a plan for code changes. It creates the task folder, scaffolds files, populates them with your plan and context, and updates the backlog.
+- CREATE: After user approves a NEW plan (omit taskId parameter)
+- UPDATE: To update an existing task (provide taskId parameter)
 
 Do NOT use for brainstorming or unapproved ideas.
 
 Task Structure:
 Each task lives at: .meridian/tasks/TASK-###/
 
-Files created:
+Files managed:
 - TASK-###.yaml — Task brief (objective, scope, constraints, acceptance criteria, deliverables, risks, out of scope, links)
 - TASK-###-plan.md — Exact plan approved by the user
-- TASK-###-context.md — Relevant context (why decisions were made), key files, initial notes
+- TASK-###-context.md — Relevant context (why decisions were made), key files, progress notes
 
 Parameters:
+- taskId: (optional) If provided, UPDATE this task instead of creating new one (e.g., "TASK-002")
 - taskBrief: YAML content for TASK-###.yaml (objective, scope, constraints, etc.)
 - planContent: Markdown content for TASK-###-plan.md (the approved plan)
 - contextContent: Markdown content for TASK-###-context.md (initial context notes)
 - backlogEntry: Brief summary for task-backlog.yaml entry
 
-All parameters are optional - if omitted, template defaults will be used.`,
+Examples:
+- Create new: task-manager({ taskBrief: "...", planContent: "..." })
+- Update existing: task-manager({ taskId: "TASK-002", taskBrief: "...", planContent: "..." })`,
         args: {
+          taskId: tool.schema.string().optional().describe("Task ID to update (e.g., 'TASK-002'). If omitted, creates new task."),
           taskBrief: tool.schema.string().optional().describe("YAML content for TASK-###.yaml (task brief)"),
           planContent: tool.schema.string().optional().describe("Markdown content for TASK-###-plan.md (approved plan)"),
           contextContent: tool.schema.string().optional().describe("Markdown content for TASK-###-context.md (initial context)"),
           backlogEntry: tool.schema.string().optional().describe("Brief summary for task-backlog.yaml"),
         },
         async execute(args, ctx) {
-          const taskId = getNextTaskId();
+          // Determine if we're creating or updating
+          const isUpdate = !!args.taskId;
+          const taskId = isUpdate ? args.taskId! : getNextTaskId();
           const templateDir = join(tasksDir, "TASK-000-template");
           const destDir = join(tasksDir, taskId);
 
-          if (!existsSync(templateDir)) {
-            throw new Error(
-              `Template directory not found at '${templateDir}'. Please create a 'TASK-000-template' folder with the desired contents.`
-            );
-          }
-
-          if (existsSync(destDir)) {
-            throw new Error(`Destination task directory already exists: '${destDir}'.`);
-          }
-
-          // Copy template directory
-          try {
-            mkdirSync(destDir, { recursive: true });
-            const items = readdirSync(templateDir, { withFileTypes: true });
-
-            for (const item of items) {
-              const srcPath = join(templateDir, item.name);
-              const dstPath = join(destDir, item.name);
-
-              if (item.isFile()) {
-                const content = readFileSync(srcPath, "utf-8");
-                writeFileSync(dstPath, content, "utf-8");
-              }
+          if (isUpdate) {
+            // UPDATE MODE: Task must exist
+            if (!existsSync(destDir)) {
+              throw new Error(`Task '${taskId}' not found at '${destDir}'. Cannot update non-existent task.`);
             }
-          } catch (error) {
-            throw new Error(`Failed to copy template: ${error}`);
+
+            // Update only the files that have new content
+            const filesUpdated = [];
+
+            if (args.taskBrief) {
+              const taskBriefPath = join(destDir, `${taskId}.yaml`);
+              writeFileSync(taskBriefPath, args.taskBrief, "utf-8");
+              filesUpdated.push("YAML brief");
+            }
+
+            if (args.planContent) {
+              const planPath = join(destDir, `${taskId}-plan.md`);
+              writeFileSync(planPath, args.planContent, "utf-8");
+              filesUpdated.push("plan");
+            }
+
+            if (args.contextContent) {
+              const contextPath = join(destDir, `${taskId}-context.md`);
+              writeFileSync(contextPath, args.contextContent, "utf-8");
+              filesUpdated.push("context");
+            }
+
+            if (filesUpdated.length === 0) {
+              return `⚠️  Task ${taskId} not modified (no content provided).\nPath: ${destDir}`;
+            }
+
+            return `✅ Task updated successfully: ${taskId}\nUpdated: ${filesUpdated.join(", ")}\nPath: ${destDir}`;
+          } else {
+            // CREATE MODE: Task must NOT exist
+            if (!existsSync(templateDir)) {
+              throw new Error(
+                `Template directory not found at '${templateDir}'. Please create a 'TASK-000-template' folder with the desired contents.`
+              );
+            }
+
+            if (existsSync(destDir)) {
+              throw new Error(`Task '${taskId}' already exists at '${destDir}'. Use taskId parameter to update it.`);
+            }
+
+            // Copy template directory
+            try {
+              mkdirSync(destDir, { recursive: true });
+              const items = readdirSync(templateDir, { withFileTypes: true });
+
+              for (const item of items) {
+                const srcPath = join(templateDir, item.name);
+                const dstPath = join(destDir, item.name);
+
+                if (item.isFile()) {
+                  const content = readFileSync(srcPath, "utf-8");
+                  writeFileSync(dstPath, content, "utf-8");
+                }
+              }
+            } catch (error) {
+              throw new Error(`Failed to copy template: ${error}`);
+            }
+
+            // Rename template files
+            renameTemplateFiles(destDir, taskId);
+
+            // Populate files with provided content (if any)
+            if (args.taskBrief) {
+              const taskBriefPath = join(destDir, `${taskId}.yaml`);
+              writeFileSync(taskBriefPath, args.taskBrief, "utf-8");
+            }
+
+            if (args.planContent) {
+              const planPath = join(destDir, `${taskId}-plan.md`);
+              writeFileSync(planPath, args.planContent, "utf-8");
+            }
+
+            if (args.contextContent) {
+              const contextPath = join(destDir, `${taskId}-context.md`);
+              writeFileSync(contextPath, args.contextContent, "utf-8");
+            }
+
+            const filesPopulated = [];
+            if (args.taskBrief) filesPopulated.push("YAML brief");
+            if (args.planContent) filesPopulated.push("plan");
+            if (args.contextContent) filesPopulated.push("context");
+
+            const populatedMsg = filesPopulated.length > 0
+              ? `\nPopulated: ${filesPopulated.join(", ")}`
+              : "\nUsing template defaults";
+
+            return `✅ Task created successfully: ${taskId}${populatedMsg}\nPath: ${destDir}`;
           }
-
-          // Rename template files
-          renameTemplateFiles(destDir, taskId);
-
-          // Populate files with provided content (if any)
-          if (args.taskBrief) {
-            const taskBriefPath = join(destDir, `${taskId}.yaml`);
-            writeFileSync(taskBriefPath, args.taskBrief, "utf-8");
-          }
-
-          if (args.planContent) {
-            const planPath = join(destDir, `${taskId}-plan.md`);
-            writeFileSync(planPath, args.planContent, "utf-8");
-          }
-
-          if (args.contextContent) {
-            const contextPath = join(destDir, `${taskId}-context.md`);
-            writeFileSync(contextPath, args.contextContent, "utf-8");
-          }
-
-          // Optionally update backlog (simplified - just log for now)
-          if (args.backlogEntry) {
-            // TODO: Implement backlog update logic
-            // For now, just note it in the return message
-          }
-
-          const filesPopulated = [];
-          if (args.taskBrief) filesPopulated.push("YAML brief");
-          if (args.planContent) filesPopulated.push("plan");
-          if (args.contextContent) filesPopulated.push("context");
-
-          const populatedMsg = filesPopulated.length > 0
-            ? `\nPopulated: ${filesPopulated.join(", ")}`
-            : "\nUsing template defaults - you can edit files manually";
-
-          return `✅ Task created successfully: ${taskId}${populatedMsg}\nPath: ${destDir}`;
         },
       }),
     },
