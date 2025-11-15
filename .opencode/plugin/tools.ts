@@ -321,17 +321,11 @@ Examples:
           const templateDir = join(tasksDir, "TASK-000-template");
           const destDir = join(tasksDir, taskId);
 
-          // DEBUG: Log execution
-          console.error(`[task-manager DEBUG] Mode: ${isUpdate ? 'UPDATE' : 'CREATE'}, TaskID: ${taskId}`);
-          console.error(`[task-manager DEBUG] Args:`, { hasTaskBrief: !!args.taskBrief, hasPlan: !!args.planContent, hasContext: !!args.contextContent, hasBacklog: !!args.backlogEntry });
-
           if (isUpdate) {
             // UPDATE MODE: Task must exist
             if (!existsSync(destDir)) {
-              console.error(`[task-manager DEBUG] ERROR: Task directory not found at ${destDir}`);
               throw new Error(`Task '${taskId}' not found at '${destDir}'. Cannot update non-existent task.`);
             }
-            console.error(`[task-manager DEBUG] Task directory exists at ${destDir}`);
 
             // Update only the files that have new content
             const filesUpdated = [];
@@ -356,27 +350,15 @@ Examples:
 
             // Update backlog if entry provided (do this BEFORE the early return check)
             if (args.backlogEntry) {
-              console.error(`[task-manager DEBUG] Updating backlog for ${taskId}...`);
-              try {
-                updateBacklog(taskId, args.backlogEntry);
-                filesUpdated.push("backlog");
-                console.error(`[task-manager DEBUG] Backlog updated successfully`);
-              } catch (error) {
-                console.error(`[task-manager DEBUG] Backlog update FAILED:`, error);
-                throw new Error(`Failed to update backlog: ${error instanceof Error ? error.message : String(error)}`);
-              }
+              updateBacklog(taskId, args.backlogEntry);
+              filesUpdated.push("backlog");
             }
 
-            console.error(`[task-manager DEBUG] filesUpdated:`, filesUpdated);
-
             if (filesUpdated.length === 0) {
-              console.error(`[task-manager DEBUG] Returning: not modified`);
               return `⚠️  Task ${taskId} not modified (no content provided).\nPath: ${destDir}`;
             }
 
-            const result = `✅ Task updated successfully: ${taskId}\nUpdated: ${filesUpdated.join(", ")}\nPath: ${destDir}`;
-            console.error(`[task-manager DEBUG] Returning SUCCESS:`, result);
-            return result;
+            return `✅ Task updated successfully: ${taskId}\nUpdated: ${filesUpdated.join(", ")}\nPath: ${destDir}`;
           } else {
             // CREATE MODE: Task must NOT exist
             if (!existsSync(templateDir)) {
