@@ -317,16 +317,6 @@ Examples:
         async execute(args, ctx) {
           const timestamp = new Date().toISOString();
 
-          // WORKAROUND: Since OpenCode doesn't show return values to the AI,
-          // write the result to a file AND throw an error (errors should be visible)
-          const resultPath = join(meridianDir, ".last-task-manager-result.txt");
-          const debugMessage = `TOOL EXECUTED at ${timestamp}\nTaskID: ${args.taskId}\n\nThis file proves task-manager IS running.\nOpenCode Bug: Return values are not shown to the AI.`;
-
-          writeFileSync(resultPath, debugMessage, "utf-8");
-
-          // Throw error instead of returning - errors should be visible to the AI
-          throw new Error(`🚨 INTENTIONAL ERROR for debugging:\n\nTask-manager tool WAS executed at ${timestamp} for taskId ${args.taskId}.\nResult written to: ${resultPath}\n\nPlease read that file to confirm the tool ran.\n\nThis error proves OpenCode is NOT showing custom tool return values to the AI, causing infinite loops.`);
-
           // Determine if we're creating or updating
           const isUpdate = !!args.taskId;
           const taskId = isUpdate ? args.taskId! : getNextTaskId();
@@ -366,16 +356,16 @@ Examples:
                 updateBacklog(taskId, args.backlogEntry);
                 filesUpdated.push("backlog");
               } catch (error) {
-                // Return error details in the response so we can see what's happening
-                return `❌ BACKLOG UPDATE FAILED for ${taskId}\nError: ${error instanceof Error ? error.message : String(error)}\nStack: ${error instanceof Error ? error.stack : 'N/A'}`;
+                throw new Error(`❌ BACKLOG UPDATE FAILED for ${taskId}\nError: ${error instanceof Error ? error.message : String(error)}`);
               }
             }
 
             if (filesUpdated.length === 0) {
-              return `⚠️  Task ${taskId} not modified (no content provided).\nPath: ${destDir}`;
+              throw new Error(`⚠️  Task ${taskId} not modified (no content provided).\nPath: ${destDir}`);
             }
 
-            return `✅ Task updated successfully: ${taskId}\nUpdated: ${filesUpdated.join(", ")}\nPath: ${destDir}\nTimestamp: ${timestamp}\n\n[DEBUG] This message should stop the loop. If you see this repeated with different timestamps, the AI is not seeing the return value properly.`;
+            // WORKAROUND: Throw a SUCCESS error since OpenCode doesn't show return values to AI
+            throw new Error(`✅ SUCCESS - STOP CALLING THIS TOOL\n\nTask ${taskId} updated successfully at ${timestamp}\nUpdated: ${filesUpdated.join(", ")}\nPath: ${destDir}\n\n⚠️ DO NOT call task-manager again. The backlog has been updated. Proceed with implementation.`);
           } else {
             // CREATE MODE: Task must NOT exist
             if (!existsSync(templateDir)) {
@@ -440,7 +430,8 @@ Examples:
               ? `\nPopulated: ${filesPopulated.join(", ")}`
               : "\nUsing template defaults";
 
-            return `✅ Task created successfully: ${taskId}${populatedMsg}\nPath: ${destDir}`;
+            // WORKAROUND: Throw a SUCCESS error since OpenCode doesn't show return values to AI
+            throw new Error(`✅ SUCCESS - Task created: ${taskId}\n\nTask ${taskId} created successfully at ${timestamp}${populatedMsg}\nPath: ${destDir}\n\nYou may now proceed with your work.`);
           }
         },
       }),
