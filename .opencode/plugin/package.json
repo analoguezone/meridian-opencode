@@ -7,11 +7,15 @@
     ".": "./index.ts"
   },
   "dependencies": {
-    "@opencode-ai/plugin": "latest"
+    "@opencode-ai/plugin": "latest",
+    "fuse.js": "^7.0.0",
+    "js-yaml": "^4.1.0",
+    "date-fns": "^3.0.0"
   },
   "devDependencies": {
     "@types/minimatch": "^5.1.2",
     "@types/node": "^20.0.0",
+    "@types/js-yaml": "^4.0.9",
     "typescript": "^5.0.0"
   }
 }

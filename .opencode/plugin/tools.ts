@@ -3,6 +3,8 @@ import { tool } from "@opencode-ai/plugin";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "fs";
 import { join, basename } from "path";
 import { execSync } from "child_process";
+import Fuse from "fuse.js";
+import { sub, parseISO, isAfter } from "date-fns";
 
 /**
  * Meridian Tools Plugin
@@ -103,10 +105,23 @@ export const MeridianToolsPlugin: Plugin = async ({ project, client, $, director
   /**
    * Update or add task entry in backlog
    */
-  function updateBacklog(taskId: string, entry: string): void {
+  function updateBacklog(taskId: string, entry: string, dependsOn?: string[], blockedBy?: string[]): void {
+    // Add dependency fields to entry if provided
+    let finalEntry = entry;
+
+    if (dependsOn && dependsOn.length > 0) {
+      const depsYaml = `    depends_on: [${dependsOn.join(", ")}]`;
+      finalEntry = finalEntry.trim() + "\n" + depsYaml;
+    }
+
+    if (blockedBy && blockedBy.length > 0) {
+      const blockedYaml = `    blocked_by: [${blockedBy.join(", ")}]`;
+      finalEntry = finalEntry.trim() + "\n" + blockedYaml;
+    }
+
     if (!existsSync(backlogPath)) {
       // Create initial backlog if missing
-      writeFileSync(backlogPath, `tasks:\n${entry}\n`, "utf-8");
+      writeFileSync(backlogPath, `tasks:\n${finalEntry}\n`, "utf-8");
       return;
     }
 
@@ -132,12 +147,12 @@ export const MeridianToolsPlugin: Plugin = async ({ project, client, $, director
       // Replace the entry
       const before = lines.slice(0, startIdx).join("\n");
       const after = lines.slice(endIdx).join("\n");
-      const newContent = before + (before ? "\n" : "") + entry + (after ? "\n" + after : "");
+      const newContent = before + (before ? "\n" : "") + finalEntry + (after ? "\n" + after : "");
       writeFileSync(backlogPath, newContent, "utf-8");
     } else {
       // Append new entry
       const content = backlogContent.trim();
-      writeFileSync(backlogPath, content + "\n" + entry + "\n", "utf-8");
+      writeFileSync(backlogPath, content + "\n" + finalEntry + "\n", "utf-8");
     }
   }
 
@@ -303,16 +318,21 @@ Parameters:
 - planContent: Markdown content for TASK-###-plan.md (the approved plan)
 - contextContent: Markdown content for TASK-###-context.md (initial context notes)
 - backlogEntry: Brief summary for task-backlog.yaml entry
+- dependsOn: (optional) Array of task IDs this task depends on (e.g., ["TASK-001", "TASK-002"])
+- blockedBy: (optional) Array of task IDs blocking this task (e.g., ["TASK-003"])
 
 Examples:
 - Create new: task-manager({ taskBrief: "...", planContent: "..." })
-- Update existing: task-manager({ taskId: "TASK-002", taskBrief: "...", planContent: "..." })`,
+- Update existing: task-manager({ taskId: "TASK-002", taskBrief: "...", planContent: "..." })
+- With dependencies: task-manager({ taskBrief: "...", dependsOn: ["TASK-001"], blockedBy: [] })`,
         args: {
           taskId: tool.schema.string().optional().describe("Task ID to update (e.g., 'TASK-002'). If omitted, creates new task."),
           taskBrief: tool.schema.string().optional().describe("YAML content for TASK-###.yaml (task brief)"),
           planContent: tool.schema.string().optional().describe("Markdown content for TASK-###-plan.md (approved plan)"),
           contextContent: tool.schema.string().optional().describe("Markdown content for TASK-###-context.md (initial context)"),
           backlogEntry: tool.schema.string().optional().describe("Brief summary for task-backlog.yaml"),
+          dependsOn: tool.schema.array(tool.schema.string()).optional().describe("Task IDs this task depends on (e.g., ['TASK-001', 'TASK-002'])"),
+          blockedBy: tool.schema.array(tool.schema.string()).optional().describe("Task IDs blocking this task (e.g., ['TASK-003'])"),
         },
         async execute(args, ctx) {
           // Determine if we're creating or updating
@@ -350,7 +370,7 @@ Examples:
 
             // Update backlog if entry provided (do this BEFORE the early return check)
             if (args.backlogEntry) {
-              updateBacklog(taskId, args.backlogEntry);
+              updateBacklog(taskId, args.backlogEntry, args.dependsOn, args.blockedBy);
               filesUpdated.push("backlog");
             }
 
@@ -415,7 +435,7 @@ Examples:
 
             // Add to backlog if entry provided
             if (args.backlogEntry) {
-              updateBacklog(taskId, args.backlogEntry);
+              updateBacklog(taskId, args.backlogEntry, args.dependsOn, args.blockedBy);
               filesPopulated.push("backlog");
             }
 
@@ -465,6 +485,114 @@ Example:
           rmSync(destDir, { recursive: true, force: true });
 
           return `✅ Task deleted successfully: ${taskId}\nRemoved from: ${destDir}\nRemoved from backlog`;
+        },
+      }),
+
+      /**
+       * Memory Search Tool
+       * Searches memory.jsonl using fuzzy search on summary, tags, and links
+       */
+      "memory-search": tool({
+        description: `Search memory.jsonl for relevant past decisions, patterns, and lessons learned.
+
+Uses fuzzy search to find memories by:
+- Summary text (supports partial matches)
+- Tags (architecture, decision, pattern, etc.)
+- Linked TASK IDs or file paths
+
+Perfect for:
+- Finding past architectural decisions
+- Recalling why certain choices were made
+- Avoiding repeating past mistakes
+- Discovering relevant patterns for current work
+
+Parameters:
+- query: Search query (text, tags, or TASK ID)
+- limit: Maximum results to return (default: 5)
+- minScore: Minimum relevance score 0-1 (default: 0.3)
+
+Examples:
+- memory-search({ query: "authentication" })
+- memory-search({ query: "TASK-001", limit: 10 })
+- memory-search({ query: "database migration", minScore: 0.5 })`,
+        args: {
+          query: tool.schema.string().describe("Search query - text, tags, or TASK ID"),
+          limit: tool.schema.number().optional().describe("Max results (default: 5)"),
+          minScore: tool.schema.number().optional().describe("Min relevance score 0-1 (default: 0.3)")
+        },
+        async execute(args, ctx) {
+          const limit = args.limit || 5;
+          const minScore = args.minScore || 0.3;
+
+          // Load all memory entries
+          if (!existsSync(memoryPath)) {
+            return `No memories found. The memory file doesn't exist yet.\n\nCreate memories using the memory-curator tool when you make significant decisions.`;
+          }
+
+          const content = readFileSync(memoryPath, "utf-8");
+          const lines = content.split("\n").filter(line => line.trim());
+
+          if (lines.length === 0) {
+            return `No memories found. The memory file is empty.\n\nCreate memories using the memory-curator tool.`;
+          }
+
+          const memories = lines.map((line, index) => {
+            try {
+              return JSON.parse(line);
+            } catch (error) {
+              return null;
+            }
+          }).filter(m => m !== null);
+
+          if (memories.length === 0) {
+            return `No valid memories found. The memory file may be corrupted.`;
+          }
+
+          // Configure Fuse.js for fuzzy search
+          const fuse = new Fuse(memories, {
+            keys: [
+              { name: "summary", weight: 0.5 },
+              { name: "tags", weight: 0.3 },
+              { name: "links", weight: 0.2 },
+              { name: "id", weight: 0.1 }
+            ],
+            threshold: 1 - minScore, // Fuse uses inverse: lower = more strict
+            includeScore: true,
+            minMatchCharLength: 2
+          });
+
+          // Search
+          const results = fuse.search(args.query);
+
+          // Filter by score and limit
+          const filtered = results
+            .filter(r => r.score !== undefined && (1 - r.score) >= minScore)
+            .slice(0, limit);
+
+          if (filtered.length === 0) {
+            return `No memories found matching "${args.query}".\n\nTry:
+- Broader search terms
+- Lower minScore (currently ${minScore})
+- Check available tags: architecture, decision, pattern, etc.`;
+          }
+
+          // Format results
+          const formatted = filtered.map((result, index) => {
+            const mem = result.item;
+            const score = ((1 - (result.score || 0)) * 100).toFixed(0);
+
+            return `## ${index + 1}. ${mem.id} (${score}% match)
+**Timestamp:** ${mem.timestamp}
+**Tags:** ${mem.tags?.join(", ") || "none"}
+**Links:** ${mem.links?.join(", ") || "none"}
+
+${mem.summary}
+`;
+          }).join("\n---\n\n");
+
+          return `Found ${filtered.length} memor${filtered.length === 1 ? "y" : "ies"} matching "${args.query}":\n\n${formatted}
+
+**Tip:** Use lower minScore to see more results, higher minScore for more precise matches.`;
         },
       }),
     },
